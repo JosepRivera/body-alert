@@ -11,19 +11,20 @@ import androidx.compose.material.icons.automirrored.outlined.BluetoothSearching
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.rivera.bodyalert.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onNavigateToAuthenticate: () -> Unit = {},
@@ -36,7 +37,9 @@ fun DashboardScreen(
 
     Scaffold(
         topBar = {
-            DashboardTopBar()
+            DashboardTopBar(
+                onNotificationClick = { /* Handle notifications */ }
+            )
         },
         bottomBar = {
             DashboardBottomBar(
@@ -56,7 +59,7 @@ fun DashboardScreen(
                 onClick = onNavigateToAuthenticate,
                 containerColor = if (isDeviceConnected) Success else Primary,
                 contentColor = Color.White,
-                modifier = Modifier.size(56.dp)
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(
                     imageVector = if (isDeviceConnected) Icons.Filled.Bluetooth else Icons.AutoMirrored.Outlined.BluetoothSearching,
@@ -65,34 +68,39 @@ fun DashboardScreen(
                 )
             }
         },
-        floatingActionButtonPosition = FabPosition.End
+        floatingActionButtonPosition = FabPosition.End,
+        containerColor = Background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Background)
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Estado de conexión
             item {
-                ConnectionStatusCard(isConnected = isDeviceConnected)
+                ConnectionStatusCompact(isConnected = isDeviceConnected)
             }
 
             // Métricas principales
             item {
-                MainMetricsSection()
+                MetricsGridSection()
             }
 
-            // Gráfico de postura mejorado
+            // Gráfico con degradado azul
             item {
-                PostureAnalysisCard()
+                PostureAnalysisChart()
             }
 
-            // Timeline simplificado
+            // Insights
             item {
-                RecentActivityCard()
+                InsightsSection()
+            }
+
+            // Timeline de actividad
+            item {
+                ActivityTimelineCard()
             }
 
             item {
@@ -102,50 +110,65 @@ fun DashboardScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardTopBar() {
-    TopAppBar(
-        title = {
-            Column {
+fun DashboardTopBar(
+    onNotificationClick: () -> Unit = {}
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
+        color = Surface
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Logo minimalista
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "BodyAlert",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Primary
-                )
-                Text(
-                    text = "Monitor Postural",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OnSurfaceVariant
+                    text = "BA",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Primary,
+                    letterSpacing = (-1).sp
                 )
             }
-        },
-        actions = {
-            IconButton(onClick = { /* Notificaciones */ }) {
+
+            // Notificaciones
+            IconButton(
+                onClick = onNotificationClick,
+                modifier = Modifier.size(40.dp)
+            ) {
                 BadgedBox(
                     badge = {
                         Badge(
                             containerColor = Error,
                             contentColor = Color.White
                         ) {
-                            Text("2")
+                            Text("2", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
                         contentDescription = "Notificaciones",
-                        tint = OnSurface
+                        tint = Gray700,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Surface,
-            titleContentColor = OnSurface
-        )
-    )
+        }
+    }
 }
 
 @Composable
@@ -155,7 +178,7 @@ fun DashboardBottomBar(
 ) {
     NavigationBar(
         containerColor = Surface,
-        contentColor = Primary
+        tonalElevation = 0.dp
     ) {
         val items = listOf(
             Triple(Icons.Outlined.Home, Icons.Filled.Home, "Inicio"),
@@ -169,18 +192,25 @@ fun DashboardBottomBar(
                 icon = {
                     Icon(
                         if (selectedItem == index) filledIcon else outlinedIcon,
-                        contentDescription = label
+                        contentDescription = label,
+                        modifier = Modifier.size(24.dp)
                     )
                 },
-                label = { Text(label) },
+                label = {
+                    Text(
+                        label,
+                        fontSize = 12.sp,
+                        fontWeight = if (selectedItem == index) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                },
                 selected = selectedItem == index,
                 onClick = { onItemSelected(index) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = Primary,
                     selectedTextColor = Primary,
-                    unselectedIconColor = OnSurfaceVariant,
-                    unselectedTextColor = OnSurfaceVariant,
-                    indicatorColor = Primary.copy(alpha = 0.12f)
+                    unselectedIconColor = Gray600,
+                    unselectedTextColor = Gray600,
+                    indicatorColor = InfoBackground
                 )
             )
         }
@@ -188,58 +218,47 @@ fun DashboardBottomBar(
 }
 
 @Composable
-fun ConnectionStatusCard(isConnected: Boolean) {
-    Card(
+fun ConnectionStatusCompact(isConnected: Boolean) {
+    Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        color = if (isConnected) SuccessBackground else Surface,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isConnected) Success else Border
+        )
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(if (isConnected) Success.copy(alpha = 0.1f) else Warning.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isConnected) Icons.Filled.CheckCircle else Icons.Outlined.BluetoothDisabled,
-                        contentDescription = null,
-                        tint = if (isConnected) Success else Warning,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+            Icon(
+                imageVector = if (isConnected) Icons.Filled.CheckCircle else Icons.Outlined.BluetoothDisabled,
+                contentDescription = null,
+                tint = if (isConnected) Success else Gray600,
+                modifier = Modifier.size(24.dp)
+            )
 
-                Column {
-                    Text(
-                        text = if (isConnected) "Dispositivo Conectado" else "Sin Conexión",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = OnSurface
-                    )
-                    Text(
-                        text = if (isConnected) "Monitoreando tu postura" else "Toca el botón para conectar",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceVariant
-                    )
-                }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isConnected) "Dispositivo conectado" else "Sin dispositivo",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = OnSurface
+                )
+                Text(
+                    text = if (isConnected) "Monitoreando en tiempo real" else "Presiona el botón para conectar",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurfaceVariant,
+                    fontSize = 13.sp
+                )
             }
 
             if (isConnected) {
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
+                        .size(10.dp)
                         .clip(CircleShape)
                         .background(Success)
                 )
@@ -249,83 +268,105 @@ fun ConnectionStatusCard(isConnected: Boolean) {
 }
 
 @Composable
-fun MainMetricsSection() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        MetricCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Filled.AccessTime,
-            value = "2h 34m",
-            label = "Tiempo Activo",
-            color = Primary
+fun MetricsGridSection() {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Resumen de Hoy",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = OnSurface
         )
-        MetricCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Filled.Check,
-            value = "86%",
-            label = "Postura Correcta",
-            color = Success
-        )
-        MetricCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.AutoMirrored.Filled.TrendingUp,
-            value = "+12%",
-            label = "Mejora Semanal",
-            color = Secondary
-        )
-    }
-}
 
-@Composable
-fun MetricCard(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    value: String,
-    label: String,
-    color: Color
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
+            MetricCardMinimal(
+                modifier = Modifier.weight(1f),
+                value = "2h 34m",
+                label = "Tiempo\nActivo",
+                icon = Icons.Outlined.AccessTime
             )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = OnSurface
+            MetricCardMinimal(
+                modifier = Modifier.weight(1f),
+                value = "86%",
+                label = "Postura\nÓptima",
+                icon = Icons.Outlined.Check
             )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = OnSurfaceVariant,
-                maxLines = 1
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MetricCardMinimal(
+                modifier = Modifier.weight(1f),
+                value = "12",
+                label = "Alertas\nCorregidas",
+                icon = Icons.Outlined.NotificationsActive
+            )
+            MetricCardMinimal(
+                modifier = Modifier.weight(1f),
+                value = "+12%",
+                label = "Mejora\nSemanal",
+                icon = Icons.AutoMirrored.Filled.TrendingUp
             )
         }
     }
 }
 
 @Composable
-fun PostureAnalysisCard() {
-    Card(
+fun MetricCardMinimal(
+    modifier: Modifier = Modifier,
+    value: String,
+    label: String,
+    icon: ImageVector
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = Surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Primary,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = OnSurface,
+                letterSpacing = (-0.5).sp
+            )
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = OnSurfaceVariant,
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun PostureAnalysisChart() {
+    Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        color = Surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Border)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -336,22 +377,23 @@ fun PostureAnalysisCard() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Análisis del Día",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = OnSurface
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    LegendItem(color = ChartPrimary, label = "Óptima")
-                    LegendItem(color = ChartWarning, label = "Alerta")
+                Column {
+                    Text(
+                        text = "Análisis Postural",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface
+                    )
+                    Text(
+                        text = "Últimas 6 horas",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OnSurfaceVariant,
+                        fontSize = 12.sp
+                    )
                 }
             }
 
-            // Gráfico de barras mejorado
+            // Gráfico con degradado azul icebreaker
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -365,48 +407,56 @@ fun PostureAnalysisCard() {
                     verticalAlignment = Alignment.Bottom
                 ) {
                     val data = listOf(
-                        Triple("9h", 0.85f, 0.15f),
-                        Triple("11h", 0.70f, 0.30f),
-                        Triple("13h", 0.65f, 0.35f),
-                        Triple("15h", 0.80f, 0.20f),
-                        Triple("17h", 0.90f, 0.10f),
-                        Triple("19h", 0.75f, 0.25f)
+                        Pair("14h", 0.85f),
+                        Pair("15h", 0.70f),
+                        Pair("16h", 0.65f),
+                        Pair("17h", 0.80f),
+                        Pair("18h", 0.90f),
+                        Pair("19h", 0.75f)
                     )
 
-                    data.forEach { (hour, correct, alert) ->
-                        EnhancedBarItem(
+                    data.forEach { (hour, percentage) ->
+                        GradientBarItem(
                             hour = hour,
-                            correctPercentage = correct,
-                            alertPercentage = alert
+                            percentage = percentage
                         )
                     }
                 }
             }
 
-            // Resumen
+            HorizontalDivider(color = Border)
+
+            // Resumen estadístico
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceVariant)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                SummaryItem(
+                StatItem(
                     value = "86%",
-                    label = "Postura Correcta",
+                    label = "Óptima",
                     color = ChartPrimary
                 )
-                Divider(
+                Box(
                     modifier = Modifier
-                        .height(40.dp)
-                        .width(1.dp),
-                    color = OnSurfaceVariant.copy(alpha = 0.2f)
+                        .width(1.dp)
+                        .height(48.dp)
+                        .background(Border)
                 )
-                SummaryItem(
+                StatItem(
                     value = "14%",
                     label = "Alertas",
-                    color = ChartWarning
+                    color = Gray600
+                )
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(48.dp)
+                        .background(Border)
+                )
+                StatItem(
+                    value = "4.2h",
+                    label = "Promedio",
+                    color = Gray600
                 )
             }
         }
@@ -414,30 +464,9 @@ fun PostureAnalysisCard() {
 }
 
 @Composable
-fun LegendItem(color: Color, label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = OnSurfaceVariant
-        )
-    }
-}
-
-@Composable
-fun EnhancedBarItem(
+fun GradientBarItem(
     hour: String,
-    correctPercentage: Float,
-    alertPercentage: Float
+    percentage: Float
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -448,44 +477,34 @@ fun EnhancedBarItem(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Bottom
         ) {
-            // Barra de alerta
-            if (alertPercentage > 0) {
-                Box(
-                    modifier = Modifier
-                        .width(32.dp)
-                        .height(140.dp * alertPercentage)
-                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                        .background(ChartWarning)
-                )
-            }
-            // Barra correcta
-            if (correctPercentage > 0) {
-                Box(
-                    modifier = Modifier
-                        .width(32.dp)
-                        .height(140.dp * correctPercentage)
-                        .clip(
-                            if (alertPercentage > 0) {
-                                RoundedCornerShape(0.dp)
-                            } else {
-                                RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
-                            }
+            Box(
+                modifier = Modifier
+                    .width(32.dp)
+                    .height(140.dp * percentage)
+                    .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                ChartGradientEnd,
+                                ChartGradientMid,
+                                ChartGradientStart
+                            )
                         )
-                        .background(ChartPrimary)
-                )
-            }
+                    )
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = hour,
             style = MaterialTheme.typography.labelSmall,
-            color = OnSurfaceVariant
+            color = OnSurfaceVariant,
+            fontSize = 11.sp
         )
     }
 }
 
 @Composable
-fun SummaryItem(
+fun StatItem(
     value: String,
     label: String,
     color: Color
@@ -498,23 +517,65 @@ fun SummaryItem(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = color
+            color = color,
+            letterSpacing = (-0.5).sp
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = OnSurfaceVariant
+            color = OnSurfaceVariant,
+            fontSize = 11.sp
         )
     }
 }
 
 @Composable
-fun RecentActivityCard() {
-    Card(
+fun InsightsSection() {
+    Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        color = InfoBackground,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Lightbulb,
+                contentDescription = null,
+                tint = Primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Recomendación",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Primary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Tu postura mejora después de las 17h. Intenta mantener esa consistencia durante todo el día.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurface,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ActivityTimelineCard() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Border)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -523,31 +584,31 @@ fun RecentActivityCard() {
             Text(
                 text = "Actividad Reciente",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = OnSurface
             )
 
-            ActivityItem(
-                icon = Icons.Filled.Check,
+            ActivityItemMinimal(
+                icon = Icons.Outlined.Check,
                 iconColor = Success,
                 time = "Hace 5 min",
-                title = "Postura Corregida",
+                title = "Postura corregida automáticamente",
                 isLast = false
             )
 
-            ActivityItem(
-                icon = Icons.Filled.Warning,
+            ActivityItemMinimal(
+                icon = Icons.Outlined.NotificationsActive,
                 iconColor = Warning,
                 time = "Hace 23 min",
-                title = "Alerta de Inclinación",
+                title = "Alerta de inclinación detectada",
                 isLast = false
             )
 
-            ActivityItem(
-                icon = Icons.Filled.WbSunny,
+            ActivityItemMinimal(
+                icon = Icons.Outlined.WbSunny,
                 iconColor = Info,
                 time = "Hace 1h",
-                title = "Recordatorio de Descanso",
+                title = "Recordatorio de descanso visual",
                 isLast = true
             )
         }
@@ -555,7 +616,7 @@ fun RecentActivityCard() {
 }
 
 @Composable
-fun ActivityItem(
+fun ActivityItemMinimal(
     icon: ImageVector,
     iconColor: Color,
     time: String,
@@ -587,7 +648,7 @@ fun ActivityItem(
                     modifier = Modifier
                         .width(1.dp)
                         .height(32.dp)
-                        .background(SurfaceVariant)
+                        .background(Border)
                 )
             }
         }
@@ -596,22 +657,18 @@ fun ActivityItem(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = OnSurface
-                )
-                Text(
-                    text = time,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OnSurfaceVariant
-                )
-            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OnSurface,
+                fontSize = 13.sp
+            )
+            Text(
+                text = time,
+                style = MaterialTheme.typography.bodySmall,
+                color = OnSurfaceVariant,
+                fontSize = 11.sp
+            )
         }
     }
 }
